@@ -1,5 +1,9 @@
 # NOXCAT Cyber Photo Generator
 
+<p align="center">
+	<img src="imgs/logo.png" alt="NOXCAT logo" width="160">
+</p>
+
 ## 問題與目標
 
 NOXCAT 將使用者照片、品牌色彩規範與角色原型整合為一致的賽博互動影像。它面向活動參與者與品牌行銷團隊，將原本需由設計師反覆製作的情境合照，縮短為一次上傳與主題選擇。
@@ -131,6 +135,15 @@ Access-Control-Allow-Headers: Content-Type
 
 - 作品展示網址：https://shadowzawa.github.io/noxcat/
 - 評選影片：待補
+
+### 生成範例
+
+<p align="center">
+	<img src="imgs/大頭貼.jpg" alt="使用者上傳的原始照片" width="260">
+	<img src="imgs/與Notcat 雨夜同行.png" alt="NOXCAT 雨夜同行生成結果" width="260">
+</p>
+
+左圖為使用者上傳的原始照片；右圖為套用 NOXCAT 角色、品牌規範與雨夜主題後的生成結果。
 
 ## 限制與未來工作
 
