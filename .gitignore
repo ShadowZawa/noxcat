@@ -33,4 +33,5 @@ env/
 .vscode/
 .idea/
 .DS_Store
+.bat
 Thumbs.db
