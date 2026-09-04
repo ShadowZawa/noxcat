@@ -217,7 +217,7 @@ async function startCamera() {
 		console.error(error);
 		useDefaultPhoto();
 	}
-}f
+}
 
 function capturePhoto() {
 	if (!mediaStream || !preview.videoWidth || !preview.videoHeight) {
