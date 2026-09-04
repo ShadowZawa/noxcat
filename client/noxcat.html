@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>NOXCAT 合照體驗</title>
+	<link rel="stylesheet" href="noxcat.css">
+</head>
+<body>
+	<main class="app">
+		<section class="hero">
+			<p class="eyebrow">NOXCAT PHOTO LAB</p>
+			<h1>拍出你的合照</h1>
+			<p class="intro">
+				開啟鏡頭，準備好後按拍照。
+			</p>
+
+			<div class="camera-shell" id="cameraShell">
+				<span class="badge" id="modeBadge">尚未啟用鏡頭</span>
+				<span class="countdown" id="countdown" aria-live="assertive"></span>
+				<video id="preview" autoplay playsinline muted></video>
+				<canvas id="snapshot"></canvas>
+			</div>
+		</section>
+
+		<aside class="controls">
+			<div class="stage stage-capture" id="captureStage">
+			<div class="panel">
+				<h2>準備拍照</h2>
+				<p>按下拍照後，倒數 5 秒。</p>
+			</div>
+
+			<div class="actions">
+				<button class="primary" id="startButton" type="button">啟用鏡頭</button>
+				<div class="actions-row">
+					<button class="secondary" id="captureButton" type="button" disabled>拍照</button>
+					<button class="secondary" id="retakeButton" type="button" disabled>重拍</button>
+				</div>
+			</div>
+			</div>
+
+			<div class="stage stage-questions" id="questionsStage" hidden>
+			<form class="panel questionnaire" id="questionnaire">
+				<div class="section-heading">
+					<div>
+						<p class="step-label">NOXCAT 心理測驗</p>
+						<h2>跟著直覺選一個</h2>
+					</div>
+					<span class="question-count" id="questionCount">第 1 / 4 題</span>
+				</div>
+				<div class="progress-track"><span class="progress-bar" id="progressBar"></span></div>
+				<p class="quiz-intro">沒有標準答案，選最接近此刻感覺的選項就好。</p>
+				<div class="question-step is-active" data-question="0">
+					<p class="question-number">QUESTION 01</p>
+					<h3>夜色剛亮起時，你最想先做什麼？</h3>
+					<div class="answer-options">
+						<button class="answer-option" type="button" data-field="impulse" data-answer="找個默契十足的夥伴" data-theme="cyber-fist-bump">找個默契十足的夥伴</button>
+						<button class="answer-option" type="button" data-field="impulse" data-answer="解開眼前未知的線索" data-theme="holographic-map">解開眼前未知的線索</button>
+						<button class="answer-option" type="button" data-field="impulse" data-answer="跳上車，往下一站出發" data-theme="future-motorcycle">跳上車，往下一站出發</button>
+					</div>
+				</div>
+				<div class="question-step" data-question="1" hidden>
+					<p class="question-number">QUESTION 02</p>
+					<h3>你最享受哪一種陪伴節奏？</h3>
+					<div class="answer-options">
+						<button class="answer-option" type="button" data-field="rhythm" data-answer="安靜看著整座城市" data-theme="rooftop-watch">安靜看著整座城市</button>
+						<button class="answer-option" type="button" data-field="rhythm" data-answer="一起跑進未知的街區" data-theme="tracking-mission">一起跑進未知的街區</button>
+						<button class="answer-option" type="button" data-field="rhythm" data-answer="停下來照顧一個小細節" data-theme="goggles-repair">停下來照顧一個小細節</button>
+					</div>
+				</div>
+				<div class="question-step" data-question="2" hidden>
+					<p class="question-number">QUESTION 03</p>
+					<h3>遇見下雨的霓虹夜，你會？</h3>
+					<div class="answer-options">
+						<button class="answer-option" type="button" data-field="instinct" data-answer="把傘往身邊的人靠一點" data-theme="rainy-night-umbrella">把傘往身邊的人靠一點</button>
+						<button class="answer-option" type="button" data-field="instinct" data-answer="找間街角休息站慢慢待著" data-theme="street-rest-stop">找間街角休息站慢慢待著</button>
+						<button class="answer-option" type="button" data-field="instinct" data-answer="看看有沒有能破解的新挑戰" data-theme="access-hack">看看有沒有能破解的新挑戰</button>
+					</div>
+				</div>
+				<div class="question-step" data-question="3" hidden>
+					<p class="question-number">QUESTION 04</p>
+					<h3>哪一幕最讓你想按下快門？</h3>
+					<div class="answer-options theme-options">
+						<button class="answer-option" type="button" data-field="memory" data-answer="賽博碰拳" data-theme="cyber-fist-bump">賽博碰拳</button>
+						<button class="answer-option" type="button" data-field="memory" data-answer="全息地圖探索" data-theme="holographic-map">全息地圖探索</button>
+						<button class="answer-option" type="button" data-field="memory" data-answer="屋頂守望" data-theme="rooftop-watch">屋頂守望</button>
+						<button class="answer-option" type="button" data-field="memory" data-answer="追蹤任務" data-theme="tracking-mission">追蹤任務</button>
+						<button class="answer-option" type="button" data-field="memory" data-answer="修理護目鏡" data-theme="goggles-repair">修理護目鏡</button>
+						<button class="answer-option" type="button" data-field="memory" data-answer="共乘未來機車" data-theme="future-motorcycle">共乘未來機車</button>
+						<button class="answer-option" type="button" data-field="memory" data-answer="雨夜共傘" data-theme="rainy-night-umbrella">雨夜共傘</button>
+						<button class="answer-option" type="button" data-field="memory" data-answer="街頭休息站" data-theme="street-rest-stop">街頭休息站</button>
+						<button class="answer-option" type="button" data-field="memory" data-answer="破解門禁" data-theme="access-hack">破解門禁</button>
+						<button class="answer-option" type="button" data-field="memory" data-answer="勝利合照" data-theme="victory-selfie">勝利合照</button>
+					</div>
+				</div>
+			</form>
+			</div>
+
+			<div class="stage stage-waiting" id="waitingStage" hidden aria-live="polite">
+				<div class="panel waiting-screen">
+					<p class="step-label">NOXCAT 正在創作</p>
+					<div class="loading-mark" aria-hidden="true"></div>
+					<h2>正在生成你的合照</h2>
+					<p>請稍候</p>
+				</div>
+			</div>
+
+			<div class="stage stage-result" id="resultStage" hidden>
+			<div class="panel final-result" id="finalResult">
+				<div class="section-heading">
+					<div>
+						<p class="step-label">你的 NOXCAT 類型</p>
+						<h2 id="resultTitle">直覺派合照玩家</h2>
+					</div>
+				</div>
+				<img id="finalPreview" alt="最終合照預覽">
+				<div class="result-badge">PHOTO PERSONALITY</div>
+				<div class="result-tags" id="resultTags"></div>
+				<p class="result-description" id="resultDescription"></p>
+				<button class="primary" id="downloadButton" type="button">下載原始合照</button>
+			</div>
+			</div>
+
+			<input class="fallback-input" id="fallbackInput" type="file" accept="image/*" capture="environment">
+		</aside>
+	</main>
+
+	<script src="noxcat.js"></script>
+</body>
+</html>

@@ -1,0 +1,36 @@
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+
+# TLS certificates and private keys
+server/cert/
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Local test uploads and generated images
+server/ex.jpg
+noxcat-generated.png
+server/noxcat-generated.png
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+
+# Logs and runtime files
+*.log
+*.pid
+
+# Editor and operating system files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
