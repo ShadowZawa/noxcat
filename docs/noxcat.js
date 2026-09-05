@@ -36,6 +36,8 @@ const gameTarget = document.getElementById('gameTarget');
 const gameTimer = document.getElementById('gameTimer');
 const gameScore = document.getElementById('gameScore');
 const gameMessage = document.getElementById('gameMessage');
+const gamePawImage = new Image();
+gamePawImage.src = 'CatPaw.png';
 
 const themes = {
 	'cyber-fist-bump': {
@@ -365,13 +367,14 @@ function drawGameHand(results) {
 	const palm = landmarks[9];
 	const palmX = 1 - palm.x;
 	const palmY = palm.y;
-	gameContext.beginPath();
-	gameContext.arc(palmX * gameCanvas.width, palmY * gameCanvas.height, 34, 0, Math.PI * 2);
-	gameContext.fillStyle = 'rgba(145, 213, 0, 0.32)';
-	gameContext.fill();
-	gameContext.lineWidth = 5;
-	gameContext.strokeStyle = '#91D500';
-	gameContext.stroke();
+	const markerSize = 88;
+	gameContext.drawImage(
+		gamePawImage,
+		palmX * gameCanvas.width - markerSize / 2,
+		palmY * gameCanvas.height - markerSize / 2,
+		markerSize,
+		markerSize
+	);
 
 	const targetDistance = Math.hypot(palmX - gameTargetPosition.x, palmY - gameTargetPosition.y);
 	gameTarget.classList.toggle('is-near', gameHasStarted && targetDistance < 0.22);
