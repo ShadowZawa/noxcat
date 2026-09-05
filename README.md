@@ -22,6 +22,10 @@ NOXCAT 將使用者照片、品牌色彩規範與角色原型整合為一致的�
 - 結果頁提供 QR code，掃描後可在手機下載生成圖片。
 - 驗證上傳格式與大小，並處理客戶端中斷上傳的情況。
 
+完整體驗流程：
+
+`首頁 → 拍照 → 四題測驗 → 生成與 30 秒遊戲 → 輸入暱稱 → 等待 → 結果與 QR code`
+
 ## 系統架構
 
 ```mermaid
@@ -53,7 +57,12 @@ flowchart LR
 
 ## 安裝與執行
 
-需求：Python 3.10 以上，以及可存取 OpenAI API 的金鑰。
+需求：
+
+- Python 3.10 以上，以及可存取 OpenAI API 的金鑰。
+- 相機功能只能在 HTTPS 網站或 `localhost` 使用，瀏覽器必須允許相機權限。
+- 前端會從 CDN 載入 MediaPipe Hands 與 QRCode.js，因此使用體驗時需要網路連線。
+- GitHub Pages 只負責託管 `docs/` 靜態前端；Flask API 必須在另一台可公開連線的主機上執行。
 
 ```powershell
 git clone https://github.com/ShadowZawa/noxcat.git
@@ -65,14 +74,45 @@ python -m pip install -r requirements.txt
 
 @"
 API_KEY=your_openai_api_key
-SERVER_IP=https://your-public-server:3022
+PUBLIC_BASE_URL=https://your-public-server:3022
 "@ | Set-Content -Path .env
 python main.py
 ```
 
-服務預設監聽 `https://0.0.0.0:3022`。若使用 `start.bat`，請先將其中的 `PYTHON_EXE` 改為本機 Python 或虛擬環境的 `python.exe` 路徑。
+### HTTPS 憑證
 
-`SERVER_IP` 是提供 QR code 掃描下載生成圖片的公開後端網址；可填完整 URL，或填入 `host:port` 由服務自動補上 `https://`。本機未設定時預設為 `https://twswapi.cloudns.nz:3022`。
+服務預設監聽 `https://0.0.0.0:3022`，啟動時會讀取下列檔案：
+
+- `server/cert/cert_chain.pem`
+- `server/cert/key.pem`
+
+`main.py` 目前將私鑰密碼設定為 `123`，因此提供的私鑰密碼必須相同；若使用其他密碼或無密碼私鑰，請同步修改 `config.keyfile_password`。例如已安裝 OpenSSL 時，可在 `server/` 建立僅供本機測試的自簽憑證：
+
+```powershell
+New-Item -ItemType Directory -Force -Path cert
+openssl req -x509 -newkey rsa:2048 -sha256 -days 365 `
+	-keyout cert/key.pem -out cert/cert_chain.pem `
+	-passout pass:123 -subj "/CN=localhost"
+```
+
+自簽憑證只適合本機測試。公開部署應使用受信任的正式憑證，並妥善保管私鑰與密碼；`server/cert/` 已被 `.gitignore` 排除，不應提交至版本庫。
+
+### 公開網址與前端 API 設定
+
+`PUBLIC_BASE_URL` 是提供 QR code 掃描下載生成圖片的公開後端 base URL；可填完整 URL，或填入 `host:port` 由服務自動補上 `https://`。未設定時預設為 `https://twswapi.cloudns.nz:3022`。舊名稱 `SERVER_IP` 仍可使用以維持相容性；若兩者同時存在，目前程式會優先採用 `SERVER_IP`。
+
+前端的 API 網址不會自動讀取後端 `.env`。自行部署時，還必須同步修改 `docs/noxcat.js` 中的兩個常數：
+
+```javascript
+const generateEndpoint = 'https://your-public-server:3022/api/generate';
+const leaderboardEndpoint = 'https://your-public-server:3022/api/leaderboard';
+```
+
+若使用 GitHub Pages，請先確認公開 API 的 HTTPS 憑證有效，而且該網址能由活動裝置與掃描 QR code 的手機連線。
+
+### 使用 `start.bat`
+
+`server/start.bat` 是特定開發電腦使用的本機範例，不能在其他環境直接執行。使用前必須將其中的 `PYTHON_EXE` 改成本機 Python 或虛擬環境的 `python.exe` 路徑，並視部署環境調整顯示的服務網址。一般情況建議先啟用虛擬環境，再直接執行 `python main.py`。
 
 API 請求範例：
 
@@ -200,7 +240,7 @@ Access-Control-Allow-Headers: Content-Type
 - 生成品質與人物、角色的一致性仍受模型輸出影響，結果需要人工挑選。
 - API 目前只支援 JPEG、PNG、WebP，且單一請求上限為 10 MB。
 - API key 由伺服器環境變數保管；正式環境應加入身分驗證、速率限制與用量監測。
-- `server/generated/` 的 QR code 下載圖片目前沒有自動清理機制；部署前應設定保存期限、排程清理或採用具到期時間的物件儲存連結。
+- `server/generated/` 的 QR code 下載圖片目前沒有自動清理機制，圖片會一直保留到人工或排程刪除。隨機 UUID 網址只降低被猜中的機率，並不是身分驗證；任何取得完整網址的人都能下載圖片。公開活動正式上線前，應設定保存期限、排程清理，或改用具有到期時間與存取控制的物件儲存連結。
 - `server/rank.json` 是單機 JSON 儲存，適合活動原型或單一服務程序。多程序、多台機器或高併發部署應改用資料庫、共享儲存與伺服器端防作弊驗證。
 - 後續可加入任務佇列、生成歷史與更細緻的前端進度回報。
 
