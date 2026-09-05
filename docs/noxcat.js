@@ -9,6 +9,8 @@ const captureButton = document.getElementById('captureButton');
 const retakeButton = document.getElementById('retakeButton');
 const downloadButton = document.getElementById('downloadButton');
 const fallbackInput = document.getElementById('fallbackInput');
+const introStage = document.getElementById('introStage');
+const introStartButton = document.getElementById('introStartButton');
 const captureStage = document.getElementById('captureStage');
 const questionsStage = document.getElementById('questionsStage');
 const waitingStage = document.getElementById('waitingStage');
@@ -100,6 +102,7 @@ let gameHasStarted = false;
 let gameTargetPosition = { x: 0.5, y: 0.5 };
 
 function showStage(stage) {
+	introStage.hidden = stage !== introStage;
 	captureStage.hidden = stage !== captureStage;
 	questionsStage.hidden = stage !== questionsStage;
 	waitingStage.hidden = stage !== waitingStage;
@@ -212,7 +215,7 @@ async function startCamera() {
 
 	cameraShell.classList.remove('captured');
 	retakeButton.disabled = true;
-	app.classList.remove('quiz-mode', 'waiting-mode', 'result-mode');
+	app.classList.remove('intro-mode', 'quiz-mode', 'waiting-mode', 'result-mode');
 	showStage(captureStage);
 
 	try {
@@ -220,7 +223,7 @@ async function startCamera() {
 
 		mediaStream = await navigator.mediaDevices.getUserMedia({
 			video: {
-				facingMode: { ideal: 'environment' }
+				facingMode: { ideal: 'user' }
 			},
 			audio: false
 		});
@@ -232,6 +235,11 @@ async function startCamera() {
 		console.error(error);
 		useDefaultPhoto();
 	}
+}
+
+function startExperience() {
+	app.classList.remove('intro-mode');
+	startCamera();
 }
 
 function capturePhoto() {
@@ -569,6 +577,7 @@ function downloadPhoto() {
 }
 
 startButton.addEventListener('click', startCamera);
+introStartButton.addEventListener('click', startExperience);
 captureButton.addEventListener('click', startCountdown);
 retakeButton.addEventListener('click', retakePhoto);
 downloadButton.addEventListener('click', downloadPhoto);
