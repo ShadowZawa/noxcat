@@ -442,9 +442,90 @@ button:disabled { cursor: not-allowed; opacity: 0.42; }
 .game-arena canvas[hidden], .game-arena #gameTarget[hidden] { display: none; }
 .game-arena #gameTarget {
 	position: absolute;
-	width: clamp(68px, 18vw, 100px);
+	z-index: 3;
+	display: grid;
+	place-items: center;
+	width: clamp(112px, 29vw, 158px);
+	aspect-ratio: 1;
+	transform: translate(-50%, -50%);
+	pointer-events: none;
+}
+.game-target > img {
+	position: relative;
+	z-index: 2;
+	width: 61%;
+	height: 61%;
+	object-fit: contain;
+	filter: drop-shadow(0 0 9px rgba(145, 213, 0, 0.32));
+}
+.target-reticle, .target-ring, .target-scan, .target-crosshair {
+	position: absolute;
+	inset: 0;
+	border-radius: 50%;
+}
+.target-reticle {
+	z-index: 1;
+	transition: transform 180ms ease, filter 180ms ease;
+}
+.target-ring { border: 2px solid var(--accent); }
+.target-ring-outer {
+	inset: 3%;
+	border-style: dotted;
+	opacity: 0.66;
+	animation: reticle-spin 7s linear infinite;
+}
+.target-ring-inner {
+	inset: 15%;
+	border-width: 3px;
+	border-color: transparent var(--accent);
+	box-shadow: inset 0 0 14px rgba(145, 213, 0, 0.2), 0 0 12px rgba(145, 213, 0, 0.22);
+	animation: reticle-spin-reverse 2.8s linear infinite;
+}
+.target-scan {
+	inset: 9%;
+	background: conic-gradient(from 8deg, rgba(145, 213, 0, 0.48), transparent 18%, transparent 100%);
+	-webkit-mask: radial-gradient(circle, transparent 0 54%, #000 56% 60%, transparent 62%);
+	mask: radial-gradient(circle, transparent 0 54%, #000 56% 60%, transparent 62%);
+	animation: reticle-spin 2.1s linear infinite;
+}
+.target-crosshair {
+	background:
+		linear-gradient(var(--accent), var(--accent)) center top / 2px 18% no-repeat,
+		linear-gradient(var(--accent), var(--accent)) center bottom / 2px 18% no-repeat,
+		linear-gradient(90deg, var(--accent), var(--accent)) left center / 18% 2px no-repeat,
+		linear-gradient(90deg, var(--accent), var(--accent)) right center / 18% 2px no-repeat;
+}
+.target-crosshair::before, .target-crosshair::after {
+	content: "";
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	background: var(--accent);
 	transform: translate(-50%, -50%);
 }
+.target-crosshair::before { width: 20px; height: 2px; }
+.target-crosshair::after { width: 2px; height: 20px; }
+.target-hit {
+	position: absolute;
+	z-index: 4;
+	top: calc(100% + 2px);
+	padding: 3px 8px;
+	border: 1px solid var(--accent);
+	background: rgba(7, 11, 15, 0.86);
+	color: var(--accent);
+	font: 700 0.62rem/1 Consolas, monospace;
+	letter-spacing: 0.12em;
+	opacity: 0;
+	transform: translateY(-5px);
+}
+.game-target.is-near .target-reticle {
+	transform: scale(0.86);
+	filter: drop-shadow(0 0 9px rgba(145, 213, 0, 0.9));
+}
+.game-target.is-near > img { filter: brightness(1.08) drop-shadow(0 0 13px rgba(145, 213, 0, 0.62)); }
+.game-target.is-hit { animation: target-hit-flash 220ms ease both; }
+.game-target.is-hit .target-hit { animation: lock-label 220ms ease both; }
+.game-target.is-hit .target-reticle { transform: scale(0.72); filter: drop-shadow(0 0 16px var(--accent)); }
 .game-message {
 	position: absolute;
 	left: 50%;
@@ -539,6 +620,10 @@ button:disabled { cursor: not-allowed; opacity: 0.42; }
 @keyframes camera-scan { from { background-position: 0 -45%; } to { background-position: 0 145%; } }
 @keyframes countdown-pop { 0%, 100% { transform: scale(0.92); opacity: 0.8; } 45% { transform: scale(1); opacity: 1; } }
 @keyframes target-pulse { to { transform: translate(-50%, -50%) scale(1.1); } }
+@keyframes reticle-spin { to { transform: rotate(360deg); } }
+@keyframes reticle-spin-reverse { to { transform: rotate(-360deg); } }
+@keyframes target-hit-flash { 45% { filter: brightness(1.9); transform: translate(-50%, -50%) scale(1.12); } }
+@keyframes lock-label { 35%, 100% { opacity: 1; transform: translateY(0); } }
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes logo-breathe { to { transform: scale(1.07); filter: brightness(1.12); } }
 @keyframes progress-scan { 0% { transform: translateX(-110%); } 100% { transform: translateX(270%); } }

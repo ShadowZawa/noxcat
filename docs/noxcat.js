@@ -102,6 +102,7 @@ let gameAnimationFrame = null;
 let gameIsRunning = false;
 let gameHasStarted = false;
 let gameTargetPosition = { x: 0.5, y: 0.5 };
+let gameTargetHitPending = false;
 
 function showStage(stage) {
 	introStage.hidden = stage !== introStage;
@@ -334,6 +335,8 @@ async function canvasToUploadBlob() {
 }
 
 function moveGameTarget() {
+	gameTarget.classList.remove('is-near', 'is-hit');
+	gameTargetHitPending = false;
 	gameTargetPosition = {
 		x: 0.16 + Math.random() * 0.68,
 		y: 0.18 + Math.random() * 0.60
@@ -370,10 +373,15 @@ function drawGameHand(results) {
 	gameContext.strokeStyle = '#91D500';
 	gameContext.stroke();
 
-	if (gameHasStarted && Math.hypot(palmX - gameTargetPosition.x, palmY - gameTargetPosition.y) < 0.13) {
+	const targetDistance = Math.hypot(palmX - gameTargetPosition.x, palmY - gameTargetPosition.y);
+	gameTarget.classList.toggle('is-near', gameHasStarted && targetDistance < 0.22);
+
+	if (gameHasStarted && !gameTargetHitPending && targetDistance < 0.13) {
+		gameTargetHitPending = true;
 		gameScore.textContent = String(Number(gameScore.textContent) + 1);
 		gameMessage.textContent = '捕捉成功！繼續找 NOXCAT';
-		moveGameTarget();
+		gameTarget.classList.add('is-hit');
+		window.setTimeout(moveGameTarget, 220);
 	}
 }
 
@@ -418,6 +426,8 @@ function stopCatchGame() {
 	}
 	gamePreview.srcObject = null;
 	gameContext.clearRect(0, 0, gameCanvas.width, gameCanvas.height);
+	gameTarget.classList.remove('is-near', 'is-hit');
+	gameTargetHitPending = false;
 }
 
 function runGameCountdown(seconds) {

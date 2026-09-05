@@ -157,7 +157,16 @@
 				<div class="game-arena">
 					<video id="gamePreview" autoplay playsinline muted></video>
 					<canvas id="gameCanvas"></canvas>
-							<img id="gameTarget" src="cat.png" alt="NOXCAT 目標">
+							<div class="game-target" id="gameTarget">
+								<span class="target-reticle" aria-hidden="true">
+									<span class="target-ring target-ring-outer"></span>
+									<span class="target-ring target-ring-inner"></span>
+									<span class="target-scan"></span>
+									<span class="target-crosshair"></span>
+								</span>
+								<img src="cat.png" alt="NOXCAT 目標">
+								<span class="target-hit" aria-hidden="true">LOCK</span>
+							</div>
 					<p class="game-message" id="gameMessage">用手掌碰觸 NOXCAT</p>
 				</div>
 			</div>
