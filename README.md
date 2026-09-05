@@ -16,7 +16,9 @@ NOXCAT 將使用者照片、品牌色彩規範與角色原型整合為一致的�
 - 固定使用色彩規範、NOXCAT 原型及兩張品牌標誌作為模型參考圖片。
 - 以 `prompt.txt` 集中管理角色、材質、色彩與攝影風格規範。
 - 以開始頁引導使用者開啟前置鏡頭（`facingMode: user`），拍照後完成四題互動測驗。
-- 生成期間提供 5 秒預備倒數與 30 秒手勢捕捉 NOXCAT 小遊戲；暫時性生成錯誤會立即自動重試最多 3 次。
+- 生成期間提供 5 秒預備倒數與 30 秒手勢捕捉 NOXCAT 小遊戲；目標使用 `docs/cat.png`，偵測到的手掌以 `docs/CatPaw.png` 標記。
+- 遊戲結束後要求輸入暱稱並記錄分數；首頁可查看前 10 名排行榜。
+- 暫時性生成錯誤會立即自動重試最多 3 次。
 - 結果頁提供 QR code，掃描後可在手機下載生成圖片。
 - 驗證上傳格式與大小，並處理客戶端中斷上傳的情況。
 
@@ -33,9 +35,12 @@ flowchart LR
 		API --> Generated[generated/<br/>temporary PNG files]
 		API -->|image/png + download URL| Web
 		Web -->|QR code| Phone[手機下載圖片]
+		Web -->|GET/POST 成績| Rank[rank.json<br/>前 10 名]
 ```
 
-前端將主題代號與使用者照片傳至 `POST /api/generate`。Flask 後端讀取提示詞與四張本機參考圖，將它們加上使用者照片後傳給 OpenAI Images API，最後把生成的 PNG 與可下載網址回傳前端。前端使用該網址生成 QR code，讓手機可以下載圖片。目前不使用資料庫；使用者原始照片不會保存，生成結果則暫存於 `server/generated/` 供 QR code 下載。
+前端將主題代號與使用者照片傳至 `POST /api/generate`。Flask 後端讀取提示詞與四張本機參考圖，將它們加上使用者照片後傳給 OpenAI Images API，最後把生成的 PNG 與可下載網址回傳前端。前端使用該網址生成 QR code，讓手機可以下載圖片。
+
+目前不使用資料庫；使用者原始照片不會保存，生成結果暫存於 `server/generated/` 供 QR code 下載。排行榜則持久化在 `server/rank.json`，每次送分後依分數由高至低排序，只保留前 10 筆。
 
 ## 使用技術
 
@@ -43,7 +48,7 @@ flowchart LR
 | --- | --- | --- |
 | AI 模型 | OpenAI `gpt-image-1-mini` | 依提示詞與多張參考圖進行影像編輯與生成 |
 | 前端 | HTML、CSS、JavaScript、MediaPipe Hands、QRCode.js | 開始頁、前置鏡頭、手勢遊戲、上傳、QR code 與結果呈現 |
-| 後端 | Python、Flask、Hypercorn | REST API、multipart 解析、HTTPS 服務 |
+| 後端 | Python、Flask、Hypercorn | REST API、multipart 解析、排行榜 JSON 持久化、HTTPS 服務 |
 | Sponsor 技術 | OpenAI API | 圖像生成能力 |
 
 ## 安裝與執行
@@ -108,13 +113,40 @@ X-Generated-Image-Url: https://your-public-server:3022/generated/<image-id>.png
 
 下載特定生成結果。此端點回傳 `image/png`，並以附件方式觸發下載。圖片名稱為隨機 UUID，且只有持有完整 URL 的使用者可存取；正式環境仍應搭配到期機制或簽名 URL。
 
-### `OPTIONS /api/generate`
+### `GET /api/leaderboard`
+
+取得排行榜前 10 名。成功回應：
+
+```json
+{
+	"entries": [
+		{
+			"nickname": "NOXCAT",
+			"score": 34,
+			"recordedAt": "2026-09-05T09:34:10.914034+00:00"
+		}
+	]
+}
+```
+
+### `POST /api/leaderboard`
+
+送出遊戲分數。前端採用 `application/x-www-form-urlencoded`，避免跨網域 JSON 請求在特定 Hypercorn WSGI 環境觸發 `OPTIONS` 預檢問題；後端也相容 JSON body。
+
+| 欄位 | 類型 | 必填 | 限制 |
+| --- | --- | --- | --- |
+| `nickname` | 字串 | 是 | 去除首尾與連續空白後為 1 至 20 字元。 |
+| `score` | 整數 | 是 | $0$ 至 $9999$。 |
+
+成功回傳 `201 Created` 與更新後的 `entries`。伺服器以 thread lock 保護讀寫，並先寫入 `rank.tmp` 再取代 `rank.json`，降低寫檔中斷造成資料損毀的機率。
+
+### `OPTIONS /api/generate` 與 `OPTIONS /api/leaderboard`
 
 用於跨網域的 CORS 預檢。成功時回傳 `204 No Content`，並包含：
 
 ```http
 Access-Control-Allow-Origin: *
-Access-Control-Allow-Methods: POST, OPTIONS
+Access-Control-Allow-Methods: GET, POST, OPTIONS
 Access-Control-Allow-Headers: Content-Type
 ```
 
@@ -134,6 +166,8 @@ Access-Control-Allow-Headers: Content-Type
 | `400` | `Unable to read uploaded form data.` | multipart 格式錯誤，常見原因是前端手動設定 `Content-Type` 而遺失 boundary。使用 `FormData` 直接作為 `fetch` body。 |
 | `400` | `Unable to read uploaded image.` | 無法解析圖片上傳內容。確認欄位名稱為 `image`。 |
 | `400` | `A valid quiz theme is required.` | 缺少 `theme`，或 theme 代號不在可用清單中。 |
+| `400` | `Nickname must be between 1 and 20 characters.` | 排行榜暱稱為空白或超過 20 字元。 |
+| `400` | `Score must be an integer between 0 and 9999.` | 排行榜分數格式或範圍不合法。 |
 | `400` | `Missing image upload.` | 請求未附帶 `image` 檔案，或檔名為空。 |
 | `400` | `Empty image upload.` | 上傳檔案大小為 0 bytes。重新選擇有效圖片。 |
 | `413` | `Image must be 10 MB or smaller.` | 請求大小超過 10 MB。縮小或壓縮圖片後重試。 |
@@ -167,6 +201,7 @@ Access-Control-Allow-Headers: Content-Type
 - API 目前只支援 JPEG、PNG、WebP，且單一請求上限為 10 MB。
 - API key 由伺服器環境變數保管；正式環境應加入身分驗證、速率限制與用量監測。
 - `server/generated/` 的 QR code 下載圖片目前沒有自動清理機制；部署前應設定保存期限、排程清理或採用具到期時間的物件儲存連結。
+- `server/rank.json` 是單機 JSON 儲存，適合活動原型或單一服務程序。多程序、多台機器或高併發部署應改用資料庫、共享儲存與伺服器端防作弊驗證。
 - 後續可加入任務佇列、生成歷史與更細緻的前端進度回報。
 
 ## 第三方服務、資料與素材
@@ -192,3 +227,7 @@ Access-Control-Allow-Headers: Content-Type
 ## License
 
 本專案採用 [Apache License 2.0](LICENSE)。
+
+## 技術文件
+
+完整架構、前後端狀態流程、資料合約、部署、維運與測試指引請見 [tech.md](tech.md)。
