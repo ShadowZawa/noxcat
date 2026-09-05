@@ -306,7 +306,7 @@ button:disabled { cursor: not-allowed; opacity: 0.42; }
 }
 .actions { display: grid; justify-items: center; gap: 16px; margin-top: 24px; }
 .camera-toggle { width: 100%; }
-.actions-row { width: 100%; display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 18px; }
+.actions-row { width: 100%; display: grid; grid-template-columns: 1fr; justify-items: center; }
 .shutter-button {
 	justify-self: center;
 	width: 108px;
@@ -328,7 +328,6 @@ button:disabled { cursor: not-allowed; opacity: 0.42; }
 	color: var(--surface);
 	font-weight: 900;
 }
-#retakeButton { min-width: 110px; }
 
 /* Quiz */
 .questionnaire { display: grid; gap: 22px; padding: 0; border: 0; background: transparent; }
@@ -444,14 +443,7 @@ button:disabled { cursor: not-allowed; opacity: 0.42; }
 .game-arena #gameTarget {
 	position: absolute;
 	width: clamp(68px, 18vw, 100px);
-	aspect-ratio: 1;
 	transform: translate(-50%, -50%);
-	border: 3px solid var(--accent);
-	border-radius: 50%;
-	padding: 10px;
-	background: var(--accent);
-	box-shadow: 0 0 0 7px rgba(7, 11, 15, 0.65), 0 0 30px rgba(145, 213, 0, 0.78);
-	animation: target-pulse 850ms ease-in-out infinite alternate;
 }
 .game-message {
 	position: absolute;

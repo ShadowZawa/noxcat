@@ -6,7 +6,6 @@ const modeBadge = document.getElementById('modeBadge');
 const countdown = document.getElementById('countdown');
 const startButton = document.getElementById('startButton');
 const captureButton = document.getElementById('captureButton');
-const retakeButton = document.getElementById('retakeButton');
 const downloadButton = document.getElementById('downloadButton');
 const fallbackInput = document.getElementById('fallbackInput');
 const introStage = document.getElementById('introStage');
@@ -128,7 +127,7 @@ function showStage(stage) {
 
 function setCameraState(isReady) {
 	captureButton.disabled = !isReady;
-	startButton.textContent = isReady ? '重新啟用鏡頭' : '啟用鏡頭';
+	startButton.hidden = isReady;
 	modeBadge.textContent = isReady ? '鏡頭預覽中' : '尚未啟用鏡頭';
 	cameraShell.classList.toggle('is-ready', isReady);
 }
@@ -168,7 +167,6 @@ function loadImageFile(file) {
 			context.drawImage(image, 0, 0, image.width, image.height);
 			cameraShell.classList.add('captured');
 			modeBadge.textContent = '已載入照片';
-			retakeButton.disabled = false;
 			showQuestionnaire();
 		};
 		image.src = reader.result;
@@ -202,7 +200,6 @@ function useDefaultPhoto() {
 
 	cameraShell.classList.add('captured');
 	modeBadge.textContent = '預設照片';
-	retakeButton.disabled = false;
 	showQuestionnaire();
 }
 
@@ -231,7 +228,6 @@ async function startCamera() {
 	startButton.onclick = null;
 
 	cameraShell.classList.remove('captured');
-	retakeButton.disabled = true;
 	app.classList.remove('intro-mode', 'quiz-mode', 'waiting-mode', 'result-mode');
 	showStage(captureStage);
 
@@ -270,7 +266,6 @@ function capturePhoto() {
 
 	cameraShell.classList.add('captured');
 	modeBadge.textContent = '照片已拍攝';
-	retakeButton.disabled = false;
 	showQuestionnaire();
 }
 
@@ -281,8 +276,6 @@ function startCountdown() {
 
 	let remaining = 5;
 	captureButton.disabled = true;
-	startButton.disabled = true;
-	retakeButton.disabled = true;
 	countdown.textContent = remaining;
 
 	countdownTimer = window.setInterval(() => {
@@ -292,23 +285,9 @@ function startCountdown() {
 		if (remaining <= 0) {
 			window.clearInterval(countdownTimer);
 			countdownTimer = null;
-			startButton.disabled = false;
 			capturePhoto();
 		}
 	}, 1000);
-}
-
-function retakePhoto() {
-	if (!mediaStream) {
-		useDefaultPhoto();
-		return;
-	}
-
-	cameraShell.classList.remove('captured');
-	modeBadge.textContent = '鏡頭預覽中';
-	retakeButton.disabled = true;
-	app.classList.remove('quiz-mode', 'waiting-mode', 'result-mode');
-	showStage(captureStage);
 }
 
 function createImageBlob(canvas, type, quality) {
@@ -614,7 +593,6 @@ function downloadPhoto() {
 startButton.addEventListener('click', startCamera);
 introStartButton.addEventListener('click', startExperience);
 captureButton.addEventListener('click', startCountdown);
-retakeButton.addEventListener('click', retakePhoto);
 downloadButton.addEventListener('click', downloadPhoto);
 answerOptions.forEach((option) => {
 	option.addEventListener('click', () => {
