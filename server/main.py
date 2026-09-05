@@ -3,10 +3,11 @@ import base64
 import os
 import sys
 import traceback
+import uuid
 from io import BytesIO
 from pathlib import Path
 
-from flask import Flask, jsonify, request, send_file
+from flask import Flask, jsonify, request, send_file, send_from_directory
 from hypercorn.asyncio import serve
 from hypercorn.config import Config
 from hypercorn.middleware.wsgi import AsyncioWSGIMiddleware
@@ -24,6 +25,9 @@ ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp"}
 PROMPT_FILE = Path("prompt.txt")
 IMAGES_DIRECTORY = Path("images")
 REFERENCE_IMAGE_NAMES = ("color.jpg", "noxcat.jpg", "LOGO_1.png", "LOGO_2.png")
+GENERATED_IMAGES_DIRECTORY = Path("generated")
+SERVER_IP = os.environ.get("SERVER_IP") or os.environ.get("PUBLIC_BASE_URL", "twswapi.cloudns.nz:3022")
+PUBLIC_BASE_URL = (SERVER_IP if SERVER_IP.startswith(("http://", "https://")) else f"https://{SERVER_IP}").rstrip("/")
 IMAGE_SUFFIX_MIME_TYPES = {
 	".jpg": "image/jpeg",
 	".jpeg": "image/jpeg",
@@ -60,6 +64,17 @@ def load_reference_images():
 			raise FileNotFoundError(image_name)
 		reference_images.append((image_name, image_path.read_bytes(), "image/jpeg"))
 	return reference_images
+
+
+@app.route("/generated/<image_id>.png", methods=["GET"])
+def download_generated_image(image_id):
+	return send_from_directory(
+		GENERATED_IMAGES_DIRECTORY,
+		f"{image_id}.png",
+		mimetype="image/png",
+		as_attachment=True,
+		download_name="noxcat-generated.png",
+	)
 
 
 @app.route("/api/generate", methods=["POST", "OPTIONS"])
@@ -134,12 +149,19 @@ def generate_image():
 			image=image_files,
 		)
 		generated_image = response.data[0].b64_json
-		return send_file(
-			BytesIO(base64.b64decode(generated_image)),
+		generated_image_bytes = base64.b64decode(generated_image)
+		GENERATED_IMAGES_DIRECTORY.mkdir(exist_ok=True)
+		image_id = uuid.uuid4().hex
+		(GENERATED_IMAGES_DIRECTORY / f"{image_id}.png").write_bytes(generated_image_bytes)
+		response = send_file(
+			BytesIO(generated_image_bytes),
 			mimetype="image/png",
 			as_attachment=False,
 			download_name="noxcat-generated.png",
 		)
+		response.headers["X-Generated-Image-Url"] = f"{PUBLIC_BASE_URL}/generated/{image_id}.png"
+		response.headers["Access-Control-Expose-Headers"] = "X-Generated-Image-Url"
+		return response
 	except Exception as error:
 		print(f"OpenAI image generation failed: {type(error).__name__}: {error}", flush=True)
 		return jsonify(error="Image generation failed."), 502

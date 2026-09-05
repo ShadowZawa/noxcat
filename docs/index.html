@@ -18,7 +18,7 @@
 			<div class="intro-content">
 				<p class="eyebrow">NOXCAT PHOTO LAB</p>
 				<h1>把今晚<br>拍成你的故事</h1>
-				<p>拍下一張照片，選擇你的直覺，和 NOXCAT 留下專屬的賽博合照。</p>
+				<p>拍下一張照片，跟著你的直覺，和 NOXCAT 留下專屬的合照。</p>
 				<button class="primary intro-start" id="introStartButton" type="button">開始體驗</button>
 			</div>
 		</section>
@@ -151,6 +151,13 @@
 				<div class="result-badge">PHOTO PERSONALITY</div>
 				<div class="result-tags" id="resultTags"></div>
 				<p class="result-description" id="resultDescription"></p>
+				<div class="download-qr" id="downloadQr" hidden>
+					<div class="qr-code" id="qrCode" aria-label="下載圖片 QR code"></div>
+					<div>
+						<p class="step-label">手機下載</p>
+						<p>掃描 QR code 下載你的 NOXCAT 合照</p>
+					</div>
+				</div>
 				<button class="primary" id="downloadButton" type="button">下載原始合照</button>
 			</div>
 			</div>
@@ -161,6 +168,7 @@
 
 	<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
 	<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+	<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js" crossorigin="anonymous"></script>
 	<script src="noxcat.js"></script>
 </body>
 </html>

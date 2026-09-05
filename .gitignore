@@ -14,6 +14,7 @@ server/cert/
 server/ex.jpg
 noxcat-generated.png
 server/noxcat-generated.png
+server/generated/
 
 # Python
 __pycache__/

@@ -15,6 +15,9 @@ NOXCAT 將使用者照片、品牌色彩規範與角色原型整合為一致的�
 - 接收使用者照片與指定互動主題，生成 NOXCAT 賽博情境照。
 - 固定使用色彩規範、NOXCAT 原型及兩張品牌標誌作為模型參考圖片。
 - 以 `prompt.txt` 集中管理角色、材質、色彩與攝影風格規範。
+- 以開始頁引導使用者開啟前置鏡頭（`facingMode: user`），拍照後完成四題互動測驗。
+- 生成期間提供 5 秒預備倒數與 30 秒手勢捕捉 NOXCAT 小遊戲；暫時性生成錯誤會立即自動重試最多 3 次。
+- 結果頁提供 QR code，掃描後可在手機下載生成圖片。
 - 驗證上傳格式與大小，並處理客戶端中斷上傳的情況。
 
 ## 系統架構
@@ -27,17 +30,19 @@ flowchart LR
 		API --> References[images/<br/>color.jpg, noxcat.jpg,<br/>LOGO_1.png, LOGO_2.png]
 		API -->|images.edit| OpenAI[OpenAI Images API<br/>gpt-image-1-mini]
 		OpenAI -->|PNG Base64| API
-		API -->|image/png| Web
+		API --> Generated[generated/<br/>temporary PNG files]
+		API -->|image/png + download URL| Web
+		Web -->|QR code| Phone[手機下載圖片]
 ```
 
-前端將主題代號與使用者照片傳至 `POST /api/generate`。Flask 後端讀取提示詞與四張本機參考圖，將它們加上使用者照片後傳給 OpenAI Images API，最後把生成的 PNG 回傳前端。目前不使用資料庫，也不持久化使用者照片或生成結果。
+前端將主題代號與使用者照片傳至 `POST /api/generate`。Flask 後端讀取提示詞與四張本機參考圖，將它們加上使用者照片後傳給 OpenAI Images API，最後把生成的 PNG 與可下載網址回傳前端。前端使用該網址生成 QR code，讓手機可以下載圖片。目前不使用資料庫；使用者原始照片不會保存，生成結果則暫存於 `server/generated/` 供 QR code 下載。
 
 ## 使用技術
 
 | 類型 | 技術／服務 | 用途 |
 | --- | --- | --- |
 | AI 模型 | OpenAI `gpt-image-1-mini` | 依提示詞與多張參考圖進行影像編輯與生成 |
-| 前端 | 外部網站前端 | 上傳照片、選擇主題與顯示生成結果 |
+| 前端 | HTML、CSS、JavaScript、MediaPipe Hands、QRCode.js | 開始頁、前置鏡頭、手勢遊戲、上傳、QR code 與結果呈現 |
 | 後端 | Python、Flask、Hypercorn | REST API、multipart 解析、HTTPS 服務 |
 | Sponsor 技術 | OpenAI API | 圖像生成能力 |
 
@@ -53,11 +58,16 @@ python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install -r requirements.txt
 
-Set-Content -Path .env -Value "API_KEY=your_openai_api_key"
+@"
+API_KEY=your_openai_api_key
+SERVER_IP=https://your-public-server:3022
+"@ | Set-Content -Path .env
 python main.py
 ```
 
 服務預設監聽 `https://0.0.0.0:3022`。若使用 `start.bat`，請先將其中的 `PYTHON_EXE` 改為本機 Python 或虛擬環境的 `python.exe` 路徑。
+
+`SERVER_IP` 是提供 QR code 掃描下載生成圖片的公開後端網址；可填完整 URL，或填入 `host:port` 由服務自動補上 `https://`。本機未設定時預設為 `https://twswapi.cloudns.nz:3022`。
 
 API 請求範例：
 
@@ -89,9 +99,14 @@ curl.exe -k -X POST "https://localhost:3022/api/generate" `
 HTTP/1.1 200 OK
 Content-Type: image/png
 Content-Disposition: inline; filename="noxcat-generated.png"
+X-Generated-Image-Url: https://your-public-server:3022/generated/<image-id>.png
 ```
 
-回應內容為 PNG binary，前端應以 `response.blob()` 讀取，而非 JSON。
+回應內容為 PNG binary，前端應以 `response.blob()` 讀取，而非 JSON。`X-Generated-Image-Url` 是供 QR code 使用的跨裝置下載網址；跨網域前端可由 `Access-Control-Expose-Headers` 讀取此 header。
+
+### `GET /generated/<image-id>.png`
+
+下載特定生成結果。此端點回傳 `image/png`，並以附件方式觸發下載。圖片名稱為隨機 UUID，且只有持有完整 URL 的使用者可存取；正式環境仍應搭配到期機制或簽名 URL。
 
 ### `OPTIONS /api/generate`
 
@@ -128,6 +143,7 @@ Access-Control-Allow-Headers: Content-Type
 | `500` | `prompt.txt was not found.` | 服務的目前工作目錄找不到 `prompt.txt`。從 `server/` 啟動 `main.py`。 |
 | `500` | `Missing required reference image: images/<file>` | `server/images/` 缺少必要的 `color.jpg`、`noxcat.jpg`、`LOGO_1.png` 或 `LOGO_2.png`。補齊檔案後重試。 |
 | `502` | `Image generation failed.` | OpenAI Images API 請求失敗，例如 API key 無效、額度不足、模型暫時無法使用或網路問題。查看 server console 的 `OpenAI image generation failed` 紀錄取得詳細原因。 |
+| `404` | 找不到生成圖片 | QR code 指向的圖片檔不存在，可能是伺服器清理了暫存檔，或圖片識別碼無效。重新生成後再掃描。 |
 
 伺服器會在 console 記錄請求大小、選定主題與模型錯誤細節；不要將 API key 或使用者原始照片寫入日誌。
 
@@ -150,7 +166,8 @@ Access-Control-Allow-Headers: Content-Type
 - 生成品質與人物、角色的一致性仍受模型輸出影響，結果需要人工挑選。
 - API 目前只支援 JPEG、PNG、WebP，且單一請求上限為 10 MB。
 - API key 由伺服器環境變數保管；正式環境應加入身分驗證、速率限制與用量監測。
-- 後續可加入任務佇列、生成歷史、結果儲存與前端進度回報。
+- `server/generated/` 的 QR code 下載圖片目前沒有自動清理機制；部署前應設定保存期限、排程清理或採用具到期時間的物件儲存連結。
+- 後續可加入任務佇列、生成歷史與更細緻的前端進度回報。
 
 ## 第三方服務、資料與素材
 
@@ -159,6 +176,8 @@ Access-Control-Allow-Headers: Content-Type
 | OpenAI Images API | https://platform.openai.com/docs/guides/image-generation | 依 OpenAI 服務條款與帳戶用量計費使用 |
 | Flask | https://flask.palletsprojects.com/ | BSD-3-Clause |
 | Hypercorn | https://hypercorn.readthedocs.io/ | MIT |
+| MediaPipe Hands | https://ai.google.dev/edge/mediapipe/solutions/vision/hand_landmarker | Apache-2.0 |
+| QRCode.js | https://github.com/davidshimjs/qrcodejs | MIT |
 | NOXCAT 原型、品牌色彩與標誌 | 專案團隊提供，位於 `server/images/` | 僅供本專案展示與生成流程使用 |
 | 使用者照片 | 使用者上傳 | 僅在請求期間轉送模型，不由本服務持久化保存 |
 

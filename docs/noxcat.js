@@ -22,6 +22,8 @@ const finalPreview = document.getElementById('finalPreview');
 const resultTitle = document.getElementById('resultTitle');
 const resultTags = document.getElementById('resultTags');
 const resultDescription = document.getElementById('resultDescription');
+const downloadQr = document.getElementById('downloadQr');
+const qrCode = document.getElementById('qrCode');
 const questionSteps = [...document.querySelectorAll('.question-step')];
 const questionCount = document.getElementById('questionCount');
 const progressBar = document.getElementById('progressBar');
@@ -501,7 +503,10 @@ async function requestGeneratedPhoto(themeId, result) {
 				error.retryable = true;
 				throw error;
 			}
-			return generatedImage;
+			return {
+				blob: generatedImage,
+				downloadUrl: response.headers.get('X-Generated-Image-Url')
+			};
 		} catch (error) {
 			const canRetry = error.retryable !== false && attempt < maxGenerationAttempts;
 			if (!canRetry) {
@@ -545,8 +550,22 @@ async function generateFinalPhoto() {
 			URL.revokeObjectURL(finalImageUrl);
 		}
 
-		finalImageUrl = URL.createObjectURL(generatedImage);
+		finalImageUrl = URL.createObjectURL(generatedImage.blob);
 		finalPreview.src = finalImageUrl;
+		if (generatedImage.downloadUrl && window.QRCode) {
+			qrCode.replaceChildren();
+			new window.QRCode(qrCode, {
+				text: generatedImage.downloadUrl,
+				width: 144,
+				height: 144,
+				colorDark: '#101820',
+				colorLight: '#F6F6F6',
+				correctLevel: window.QRCode.CorrectLevel.M
+			});
+			downloadQr.hidden = false;
+		} else {
+			downloadQr.hidden = true;
+		}
 		resultTitle.textContent = result.title;
 		resultTags.innerHTML = Object.values(answers).map(({ answer }) => `<span>${answer}</span>`).join('');
 		resultDescription.textContent = result.description;
@@ -556,6 +575,7 @@ async function generateFinalPhoto() {
 		resultTitle.textContent = '照片已準備好';
 		resultTags.innerHTML = '';
 		resultDescription.textContent = '目前無法連線，先保留你的原始照片。';
+		downloadQr.hidden = true;
 	}
 
 	app.classList.remove('quiz-mode');
