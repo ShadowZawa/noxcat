@@ -224,7 +224,7 @@ Access-Control-Allow-Headers: Content-Type
 ## 作品展示
 
 - 作品展示網址：https://shadowzawa.github.io/noxcat/
-- 評選影片：待補
+- 評選影片：https://youtube.com/shorts/fMhd09i0KM0?feature=share
 
 ### 生成範例
 
@@ -262,7 +262,9 @@ Access-Control-Allow-Headers: Content-Type
 
 | 姓名 | 分工 |
 | --- | --- |
-| 待補 | 待補 |
+| 侯玟宏 | 後端 前端架構 |
+| 龍彥傑 | 圖片生成指令校調 |
+| 林利津 | UI/UX設計 影片製作 |
 
 ## License
 
