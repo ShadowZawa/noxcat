@@ -82,7 +82,7 @@ body {
 	grid-template-rows: minmax(54vh, 1fr) auto;
 	background: var(--ink-deep);
 }
-.intro-art { position: absolute; inset: 0; overflow: hidden; }
+.intro-art { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
 .intro-photo, .intro-shade { position: absolute; inset: 0; width: 100%; height: 100%; }
 .intro-photo {
 	object-fit: cover;
