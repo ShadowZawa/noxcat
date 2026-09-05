@@ -11,6 +11,7 @@ const downloadButton = document.getElementById('downloadButton');
 const fallbackInput = document.getElementById('fallbackInput');
 const introStage = document.getElementById('introStage');
 const introStartButton = document.getElementById('introStartButton');
+const stageIndicator = document.getElementById('stageIndicator');
 const captureStage = document.getElementById('captureStage');
 const questionsStage = document.getElementById('questionsStage');
 const waitingStage = document.getElementById('waitingStage');
@@ -110,12 +111,26 @@ function showStage(stage) {
 	waitingStage.hidden = stage !== waitingStage;
 	gameStage.hidden = stage !== gameStage;
 	resultStage.hidden = stage !== resultStage;
+
+	const stageMeta = new Map([
+		[captureStage, { name: 'capture', label: '01 <span>/ PHOTO</span>' }],
+		[questionsStage, { name: 'questions', label: '02 <span>/ QUIZ</span>' }],
+		[gameStage, { name: 'game', label: '03 <span>/ GAME</span>' }],
+		[waitingStage, { name: 'waiting', label: '04 <span>/ PROCESS</span>' }],
+		[resultStage, { name: 'result', label: '05 <span>/ RESULT</span>' }]
+	]);
+	const meta = stageMeta.get(stage);
+	if (meta) {
+		app.dataset.stage = meta.name;
+		stageIndicator.innerHTML = meta.label;
+	}
 }
 
 function setCameraState(isReady) {
 	captureButton.disabled = !isReady;
 	startButton.textContent = isReady ? '重新啟用鏡頭' : '啟用鏡頭';
 	modeBadge.textContent = isReady ? '鏡頭預覽中' : '尚未啟用鏡頭';
+	cameraShell.classList.toggle('is-ready', isReady);
 }
 
 function showQuestionnaire() {

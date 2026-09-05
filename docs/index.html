@@ -13,7 +13,10 @@
 			<div class="intro-art">
 				<img class="intro-photo" src="start-art.png" alt="使用者與 NOXCAT 的賽博夜景合照">
 				<div class="intro-shade"></div>
-				<img class="intro-logo" src="logo.png" alt="NOXCAT">
+				<div class="brand-lockup intro-logo">
+					<img src="logo.png" alt="">
+					<span>NOXCAT</span>
+				</div>
 			</div>
 			<div class="intro-content">
 				<p class="eyebrow">NOXCAT PHOTO LAB</p>
@@ -23,16 +26,29 @@
 			</div>
 		</section>
 
+		<header class="experience-header">
+			<div class="brand-lockup">
+				<img src="logo.png" alt="">
+				<span>NOXCAT</span>
+			</div>
+			<p class="stage-indicator" id="stageIndicator">01 <span>/ PHOTO</span></p>
+		</header>
+
 		<section class="hero">
-			<p class="eyebrow">NOXCAT PHOTO LAB</p>
 			<h1>拍出你的合照</h1>
 			<p class="intro">
-				開啟鏡頭，準備好後按拍照。
+				看著鏡頭，準備好後按下拍照。
 			</p>
 
 			<div class="camera-shell" id="cameraShell">
 				<span class="badge" id="modeBadge">尚未啟用鏡頭</span>
 				<span class="countdown" id="countdown" aria-live="assertive"></span>
+				<div class="camera-scan" aria-hidden="true"></div>
+				<div class="face-guide" aria-hidden="true"></div>
+				<i class="viewfinder-corner corner-tl" aria-hidden="true"></i>
+				<i class="viewfinder-corner corner-tr" aria-hidden="true"></i>
+				<i class="viewfinder-corner corner-bl" aria-hidden="true"></i>
+				<i class="viewfinder-corner corner-br" aria-hidden="true"></i>
 				<video id="preview" autoplay playsinline muted></video>
 				<canvas id="snapshot"></canvas>
 			</div>
@@ -40,15 +56,18 @@
 
 		<aside class="controls">
 			<div class="stage stage-capture" id="captureStage">
-			<div class="panel">
+			<div class="panel capture-note">
+				<span class="note-mark" aria-hidden="true"></span>
+				<div>
 				<h2>準備拍照</h2>
 				<p>按下拍照後，倒數 5 秒。</p>
+				</div>
 			</div>
 
 			<div class="actions">
-				<button class="primary" id="startButton" type="button">啟用鏡頭</button>
+				<button class="secondary camera-toggle" id="startButton" type="button">啟用鏡頭</button>
 				<div class="actions-row">
-					<button class="secondary" id="captureButton" type="button" disabled>拍照</button>
+					<button class="primary shutter-button" id="captureButton" type="button" disabled><span>拍照</span></button>
 					<button class="secondary" id="retakeButton" type="button" disabled>重拍</button>
 				</div>
 			</div>
@@ -113,10 +132,15 @@
 
 			<div class="stage stage-waiting" id="waitingStage" hidden aria-live="polite">
 				<div class="panel waiting-screen">
-					<p class="step-label">NOXCAT 正在創作</p>
-					<div class="loading-mark" aria-hidden="true"></div>
+					<div class="loading-mark" aria-hidden="true">
+						<span></span><span></span><span></span>
+						<img src="logo.png" alt="">
+					</div>
+					<p class="step-label status-pill">NOXCAT 正在創作</p>
 					<h2>正在生成你的合照</h2>
-					<p>請稍候</p>
+					<p>請稍候，精彩畫面即將完成。</p>
+					<div class="generation-line" aria-hidden="true"><span></span></div>
+					<p class="keep-open">請保持畫面開啟</p>
 				</div>
 			</div>
 
@@ -147,7 +171,9 @@
 						<h2 id="resultTitle">直覺派合照玩家</h2>
 					</div>
 				</div>
-				<img id="finalPreview" alt="最終合照預覽">
+				<div class="result-image-frame">
+					<img id="finalPreview" alt="最終合照預覽">
+				</div>
 				<div class="result-badge">PHOTO PERSONALITY</div>
 				<div class="result-tags" id="resultTags"></div>
 				<p class="result-description" id="resultDescription"></p>
