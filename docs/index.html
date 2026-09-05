@@ -23,6 +23,7 @@
 				<h1>把今晚<br>拍成你的故事</h1>
 				<p>拍下一張照片，跟著你的直覺，和 NOXCAT 留下專屬的合照。</p>
 				<button class="primary intro-start" id="introStartButton" type="button">開始體驗</button>
+				<button class="secondary intro-leaderboard" id="introLeaderboardButton" type="button">查看排行榜</button>
 			</div>
 		</section>
 
@@ -169,6 +170,32 @@
 							</div>
 					<p class="game-message" id="gameMessage">用手掌碰觸 NOXCAT</p>
 				</div>
+			</div>
+
+			<div class="stage stage-score-entry" id="scoreEntryStage" hidden>
+				<form class="panel score-entry" id="scoreEntryForm">
+					<p class="step-label">GAME COMPLETE</p>
+					<h2>留下你的紀錄</h2>
+					<p>本次捕捉 <strong id="finalGameScore">0</strong> 次 NOXCAT</p>
+					<label for="nicknameInput">暱稱</label>
+					<input id="nicknameInput" name="nickname" type="text" maxlength="20" autocomplete="nickname" placeholder="輸入暱稱" required>
+					<p class="score-entry-message" id="scoreEntryMessage" aria-live="polite"></p>
+					<button class="primary" id="scoreSubmitButton" type="submit">記錄成績</button>
+				</form>
+			</div>
+
+			<div class="stage stage-leaderboard" id="leaderboardStage" hidden>
+				<section class="panel leaderboard-panel" aria-labelledby="leaderboardTitle">
+					<div class="section-heading">
+						<div>
+							<p class="step-label">TOP 10</p>
+							<h2 id="leaderboardTitle">排行榜</h2>
+						</div>
+					</div>
+					<ol class="leaderboard-list" id="leaderboardList" aria-live="polite"></ol>
+					<p class="leaderboard-message" id="leaderboardMessage" aria-live="polite"></p>
+					<button class="secondary" id="leaderboardBackButton" type="button">返回首頁</button>
+				</section>
 			</div>
 
 			<div class="stage stage-result" id="resultStage" hidden>

@@ -10,11 +10,22 @@ const downloadButton = document.getElementById('downloadButton');
 const fallbackInput = document.getElementById('fallbackInput');
 const introStage = document.getElementById('introStage');
 const introStartButton = document.getElementById('introStartButton');
+const introLeaderboardButton = document.getElementById('introLeaderboardButton');
 const stageIndicator = document.getElementById('stageIndicator');
 const captureStage = document.getElementById('captureStage');
 const questionsStage = document.getElementById('questionsStage');
 const waitingStage = document.getElementById('waitingStage');
 const gameStage = document.getElementById('gameStage');
+const scoreEntryStage = document.getElementById('scoreEntryStage');
+const scoreEntryForm = document.getElementById('scoreEntryForm');
+const nicknameInput = document.getElementById('nicknameInput');
+const finalGameScore = document.getElementById('finalGameScore');
+const scoreEntryMessage = document.getElementById('scoreEntryMessage');
+const scoreSubmitButton = document.getElementById('scoreSubmitButton');
+const leaderboardStage = document.getElementById('leaderboardStage');
+const leaderboardList = document.getElementById('leaderboardList');
+const leaderboardMessage = document.getElementById('leaderboardMessage');
+const leaderboardBackButton = document.getElementById('leaderboardBackButton');
 const resultStage = document.getElementById('resultStage');
 const questionnaire = document.getElementById('questionnaire');
 const finalResult = document.getElementById('finalResult');
@@ -97,6 +108,7 @@ let countdownTimer = null;
 let currentQuestionIndex = 0;
 const answers = {};
 const generateEndpoint = 'https://twswapi.cloudns.nz:3022/api/generate';
+const leaderboardEndpoint = 'https://twswapi.cloudns.nz:3022/api/leaderboard';
 const maxGenerationAttempts = 3;
 let finalImageUrl = '';
 let handTracker = null;
@@ -105,6 +117,7 @@ let gameIsRunning = false;
 let gameHasStarted = false;
 let gameTargetPosition = { x: 0.5, y: 0.5 };
 let gameTargetHitPending = false;
+let scoreEntryResolver = null;
 
 function showStage(stage) {
 	introStage.hidden = stage !== introStage;
@@ -112,14 +125,18 @@ function showStage(stage) {
 	questionsStage.hidden = stage !== questionsStage;
 	waitingStage.hidden = stage !== waitingStage;
 	gameStage.hidden = stage !== gameStage;
+	scoreEntryStage.hidden = stage !== scoreEntryStage;
+	leaderboardStage.hidden = stage !== leaderboardStage;
 	resultStage.hidden = stage !== resultStage;
 
 	const stageMeta = new Map([
 		[captureStage, { name: 'capture', label: '01 <span>/ PHOTO</span>' }],
 		[questionsStage, { name: 'questions', label: '02 <span>/ QUIZ</span>' }],
 		[gameStage, { name: 'game', label: '03 <span>/ GAME</span>' }],
+		[scoreEntryStage, { name: 'score', label: '04 <span>/ SCORE</span>' }],
 		[waitingStage, { name: 'waiting', label: '04 <span>/ PROCESS</span>' }],
-		[resultStage, { name: 'result', label: '05 <span>/ RESULT</span>' }]
+		[resultStage, { name: 'result', label: '05 <span>/ RESULT</span>' }],
+		[leaderboardStage, { name: 'leaderboard', label: 'TOP <span>/ 10</span>' }]
 	]);
 	const meta = stageMeta.get(stage);
 	if (meta) {
@@ -256,6 +273,94 @@ async function startCamera() {
 function startExperience() {
 	app.classList.remove('intro-mode');
 	startCamera();
+}
+
+function showScoreEntry(score) {
+	finalGameScore.textContent = String(score);
+	nicknameInput.value = '';
+	scoreEntryMessage.textContent = '';
+	showStage(scoreEntryStage);
+	window.setTimeout(() => nicknameInput.focus(), 0);
+	return new Promise((resolve) => {
+		scoreEntryResolver = resolve;
+	});
+}
+
+async function submitScore(event) {
+	event.preventDefault();
+	const nickname = nicknameInput.value.trim();
+	if (!nickname) {
+		scoreEntryMessage.textContent = '請輸入暱稱。';
+		return;
+	}
+
+	scoreSubmitButton.disabled = true;
+	scoreEntryMessage.textContent = '正在記錄成績...';
+	try {
+		const response = await fetch(leaderboardEndpoint, {
+			method: 'POST',
+			body: new URLSearchParams({
+				nickname,
+				score: finalGameScore.textContent
+			})
+		});
+		if (!response.ok) {
+			throw new Error('Unable to record score.');
+		}
+		if (scoreEntryResolver) {
+			const resolve = scoreEntryResolver;
+			scoreEntryResolver = null;
+			resolve();
+		}
+	} catch (error) {
+		console.error(error);
+		scoreEntryMessage.textContent = '成績記錄失敗，請再試一次。';
+	} finally {
+		scoreSubmitButton.disabled = false;
+	}
+}
+
+function renderLeaderboard(entries) {
+	leaderboardList.replaceChildren();
+	if (!entries.length) {
+		leaderboardMessage.textContent = '目前還沒有成績紀錄。';
+		return;
+	}
+	leaderboardMessage.textContent = '';
+	entries.forEach((entry, index) => {
+		const item = document.createElement('li');
+		const rank = document.createElement('span');
+		const nickname = document.createElement('span');
+		const score = document.createElement('strong');
+		rank.textContent = String(index + 1).padStart(2, '0');
+		nickname.textContent = entry.nickname;
+		score.textContent = String(entry.score);
+		item.append(rank, nickname, score);
+		leaderboardList.append(item);
+	});
+}
+
+async function showLeaderboard() {
+	app.classList.remove('intro-mode', 'quiz-mode', 'waiting-mode', 'result-mode');
+	showStage(leaderboardStage);
+	leaderboardList.replaceChildren();
+	leaderboardMessage.textContent = '正在讀取排行榜...';
+	try {
+		const response = await fetch(leaderboardEndpoint);
+		if (!response.ok) {
+			throw new Error('Unable to load leaderboard.');
+		}
+		const { entries } = await response.json();
+		renderLeaderboard(Array.isArray(entries) ? entries : []);
+	} catch (error) {
+		console.error(error);
+		leaderboardMessage.textContent = '目前無法讀取排行榜。';
+	}
+}
+
+function returnToIntro() {
+	app.classList.add('intro-mode');
+	showStage(introStage);
 }
 
 function capturePhoto() {
@@ -478,7 +583,7 @@ async function playCatchGame() {
 			if (remaining <= 0) {
 				window.clearInterval(timer);
 				stopCatchGame();
-				resolve();
+				showScoreEntry(Number(gameScore.textContent)).then(resolve);
 			}
 		}, 1000);
 	});
@@ -605,8 +710,11 @@ function downloadPhoto() {
 
 startButton.addEventListener('click', startCamera);
 introStartButton.addEventListener('click', startExperience);
+introLeaderboardButton.addEventListener('click', showLeaderboard);
+leaderboardBackButton.addEventListener('click', returnToIntro);
 captureButton.addEventListener('click', startCountdown);
 downloadButton.addEventListener('click', downloadPhoto);
+scoreEntryForm.addEventListener('submit', submitScore);
 answerOptions.forEach((option) => {
 	option.addEventListener('click', () => {
 		const { field, answer, theme } = option.dataset;

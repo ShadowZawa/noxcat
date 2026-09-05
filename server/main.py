@@ -1,9 +1,12 @@
 import asyncio
 import base64
+import json
 import os
 import sys
+import threading
 import traceback
 import uuid
+from datetime import UTC, datetime
 from io import BytesIO
 from pathlib import Path
 
@@ -26,6 +29,9 @@ PROMPT_FILE = Path("prompt.txt")
 IMAGES_DIRECTORY = Path("images")
 REFERENCE_IMAGE_NAMES = ("color.jpg", "noxcat.jpg", "LOGO_1.png", "LOGO_2.png")
 GENERATED_IMAGES_DIRECTORY = Path("generated")
+LEADERBOARD_FILE = Path("rank.json")
+LEADERBOARD_LIMIT = 10
+leaderboard_lock = threading.Lock()
 SERVER_IP = os.environ.get("SERVER_IP") or os.environ.get("PUBLIC_BASE_URL", "twswapi.cloudns.nz:3022")
 PUBLIC_BASE_URL = (SERVER_IP if SERVER_IP.startswith(("http://", "https://")) else f"https://{SERVER_IP}").rstrip("/")
 IMAGE_SUFFIX_MIME_TYPES = {
@@ -51,7 +57,7 @@ THEME_PROMPTS = {
 @app.after_request
 def add_cors_headers(response):
 	response.headers["Access-Control-Allow-Origin"] = "*"
-	response.headers["Access-Control-Allow-Methods"] = "POST, OPTIONS"
+	response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
 	response.headers["Access-Control-Allow-Headers"] = "Content-Type"
 	return response
 
@@ -64,6 +70,69 @@ def load_reference_images():
 			raise FileNotFoundError(image_name)
 		reference_images.append((image_name, image_path.read_bytes(), "image/jpeg"))
 	return reference_images
+
+
+def load_leaderboard():
+	try:
+		entries = json.loads(LEADERBOARD_FILE.read_text(encoding="utf-8"))
+	except FileNotFoundError:
+		return []
+	except (json.JSONDecodeError, OSError) as error:
+		print(f"Unable to read leaderboard: {error}", flush=True)
+		return []
+
+	if not isinstance(entries, list):
+		return []
+	return [entry for entry in entries if isinstance(entry, dict)]
+
+
+def ensure_leaderboard_file():
+	if not LEADERBOARD_FILE.exists():
+		save_leaderboard([])
+
+
+def save_leaderboard(entries):
+	temporary_file = LEADERBOARD_FILE.with_suffix(".tmp")
+	temporary_file.write_text(
+		json.dumps(entries, ensure_ascii=False, indent=2),
+		encoding="utf-8",
+	)
+	temporary_file.replace(LEADERBOARD_FILE)
+
+
+@app.route("/api/leaderboard", methods=["GET", "POST", "OPTIONS"])
+def leaderboard():
+	if request.method == "OPTIONS":
+		return "", 204
+
+	with leaderboard_lock:
+		if request.method == "GET":
+			return jsonify(entries=load_leaderboard())
+
+		payload = request.get_json(silent=True) or request.form
+		nickname = " ".join(str(payload.get("nickname", "")).split())
+		raw_score = payload.get("score")
+		if not nickname or len(nickname) > 20:
+			return jsonify(error="Nickname must be between 1 and 20 characters."), 400
+		if isinstance(raw_score, bool):
+			return jsonify(error="Score must be an integer between 0 and 9999."), 400
+		try:
+			score = int(raw_score)
+		except (TypeError, ValueError):
+			return jsonify(error="Score must be an integer between 0 and 9999."), 400
+		if not 0 <= score <= 9999:
+			return jsonify(error="Score must be an integer between 0 and 9999."), 400
+
+		entries = load_leaderboard()
+		entries.append({
+			"nickname": nickname,
+			"score": score,
+			"recordedAt": datetime.now(UTC).isoformat(),
+		})
+		entries.sort(key=lambda entry: entry.get("score", 0), reverse=True)
+		entries = entries[:LEADERBOARD_LIMIT]
+		save_leaderboard(entries)
+		return jsonify(entries=entries), 201
 
 
 @app.route("/generated/<image_id>.png", methods=["GET"])
@@ -192,6 +261,7 @@ def handle_asyncio_exception(loop, context):
 
 
 async def run_server(config):
+	ensure_leaderboard_file()
 	asyncio.get_running_loop().set_exception_handler(handle_asyncio_exception)
 	await serve(AsyncioWSGIMiddleware(app, max_body_size=MAX_IMAGE_SIZE), config)
 
