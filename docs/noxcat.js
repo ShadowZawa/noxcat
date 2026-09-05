@@ -12,6 +12,7 @@ const fallbackInput = document.getElementById('fallbackInput');
 const captureStage = document.getElementById('captureStage');
 const questionsStage = document.getElementById('questionsStage');
 const waitingStage = document.getElementById('waitingStage');
+const gameStage = document.getElementById('gameStage');
 const resultStage = document.getElementById('resultStage');
 const questionnaire = document.getElementById('questionnaire');
 const finalResult = document.getElementById('finalResult');
@@ -24,6 +25,13 @@ const questionCount = document.getElementById('questionCount');
 const progressBar = document.getElementById('progressBar');
 const answerOptions = [...document.querySelectorAll('.answer-option')];
 const context = snapshot.getContext('2d');
+const gamePreview = document.getElementById('gamePreview');
+const gameCanvas = document.getElementById('gameCanvas');
+const gameContext = gameCanvas.getContext('2d');
+const gameTarget = document.getElementById('gameTarget');
+const gameTimer = document.getElementById('gameTimer');
+const gameScore = document.getElementById('gameScore');
+const gameMessage = document.getElementById('gameMessage');
 
 const themes = {
 	'cyber-fist-bump': {
@@ -83,12 +91,19 @@ let countdownTimer = null;
 let currentQuestionIndex = 0;
 const answers = {};
 const generateEndpoint = 'https://twswapi.cloudns.nz:3022/api/generate';
+const maxGenerationAttempts = 3;
 let finalImageUrl = '';
+let handTracker = null;
+let gameAnimationFrame = null;
+let gameIsRunning = false;
+let gameHasStarted = false;
+let gameTargetPosition = { x: 0.5, y: 0.5 };
 
 function showStage(stage) {
 	captureStage.hidden = stage !== captureStage;
 	questionsStage.hidden = stage !== questionsStage;
 	waitingStage.hidden = stage !== waitingStage;
+	gameStage.hidden = stage !== gameStage;
 	resultStage.hidden = stage !== resultStage;
 }
 
@@ -314,37 +329,208 @@ async function canvasToUploadBlob() {
 	return smallestBlob;
 }
 
+function moveGameTarget() {
+	gameTargetPosition = {
+		x: 0.16 + Math.random() * 0.68,
+		y: 0.18 + Math.random() * 0.60
+	};
+	gameTarget.style.left = `${gameTargetPosition.x * 100}%`;
+	gameTarget.style.top = `${gameTargetPosition.y * 100}%`;
+}
+
+function resizeGameCanvas() {
+	const width = gamePreview.videoWidth || 720;
+	const height = gamePreview.videoHeight || 960;
+	if (gameCanvas.width !== width || gameCanvas.height !== height) {
+		gameCanvas.width = width;
+		gameCanvas.height = height;
+	}
+}
+
+function drawGameHand(results) {
+	resizeGameCanvas();
+	gameContext.clearRect(0, 0, gameCanvas.width, gameCanvas.height);
+	const landmarks = results.multiHandLandmarks?.[0];
+	if (!landmarks || !gameIsRunning) {
+		return;
+	}
+
+	const palm = landmarks[9];
+	const palmX = 1 - palm.x;
+	const palmY = palm.y;
+	gameContext.beginPath();
+	gameContext.arc(palmX * gameCanvas.width, palmY * gameCanvas.height, 34, 0, Math.PI * 2);
+	gameContext.fillStyle = 'rgba(145, 213, 0, 0.32)';
+	gameContext.fill();
+	gameContext.lineWidth = 5;
+	gameContext.strokeStyle = '#91D500';
+	gameContext.stroke();
+
+	if (gameHasStarted && Math.hypot(palmX - gameTargetPosition.x, palmY - gameTargetPosition.y) < 0.13) {
+		gameScore.textContent = String(Number(gameScore.textContent) + 1);
+		gameMessage.textContent = '捕捉成功！繼續找 NOXCAT';
+		moveGameTarget();
+	}
+}
+
+async function trackHands() {
+	if (!gameIsRunning || !handTracker || gamePreview.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
+		return;
+	}
+	try {
+		await handTracker.send({ image: gamePreview });
+	} catch (error) {
+		console.warn('Hand tracking unavailable.', error);
+	}
+	if (gameIsRunning) {
+		gameAnimationFrame = window.requestAnimationFrame(trackHands);
+	}
+}
+
+function createHandTracker() {
+	if (handTracker || !window.Hands) {
+		return handTracker;
+	}
+
+	handTracker = new window.Hands({
+		locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+	});
+	handTracker.setOptions({
+		maxNumHands: 1,
+		modelComplexity: 0,
+		minDetectionConfidence: 0.6,
+		minTrackingConfidence: 0.6
+	});
+	handTracker.onResults(drawGameHand);
+	return handTracker;
+}
+
+function stopCatchGame() {
+	gameIsRunning = false;
+	gameHasStarted = false;
+	if (gameAnimationFrame) {
+		window.cancelAnimationFrame(gameAnimationFrame);
+		gameAnimationFrame = null;
+	}
+	gamePreview.srcObject = null;
+	gameContext.clearRect(0, 0, gameCanvas.width, gameCanvas.height);
+}
+
+function runGameCountdown(seconds) {
+	gameTimer.textContent = String(seconds);
+	gameMessage.textContent = '準備捕捉 NOXCAT';
+
+	return new Promise((resolve) => {
+		let remaining = seconds;
+		const timer = window.setInterval(() => {
+			remaining -= 1;
+			gameTimer.textContent = String(remaining);
+			if (remaining <= 0) {
+				window.clearInterval(timer);
+				resolve();
+			}
+		}, 1000);
+	});
+}
+
+async function playCatchGame() {
+	showStage(gameStage);
+	gameScore.textContent = '0';
+	gameTarget.hidden = false;
+	gameCanvas.hidden = false;
+	moveGameTarget();
+
+	if (mediaStream && createHandTracker()) {
+		gamePreview.srcObject = mediaStream;
+		await gamePreview.play();
+		gameIsRunning = true;
+		gameAnimationFrame = window.requestAnimationFrame(trackHands);
+	} else {
+		gameMessage.textContent = '鏡頭或手部追蹤未就緒，圖片仍在生成中';
+	}
+	await runGameCountdown(5);
+	gameTimer.textContent = '30';
+	gameMessage.textContent = '用手掌碰觸 NOXCAT';
+	gameHasStarted = true;
+
+	return new Promise((resolve) => {
+		let remaining = 30;
+		const timer = window.setInterval(() => {
+			remaining -= 1;
+			gameTimer.textContent = String(remaining);
+			if (remaining <= 0) {
+				window.clearInterval(timer);
+				stopCatchGame();
+				resolve();
+			}
+		}, 1000);
+	});
+}
+
+async function requestGeneratedPhoto(themeId, result) {
+	const photo = await canvasToUploadBlob();
+	const extension = photo.type === 'image/webp' ? 'webp' : 'jpg';
+
+	for (let attempt = 1; attempt <= maxGenerationAttempts; attempt += 1) {
+		try {
+			const formData = new FormData();
+			formData.append('image', photo, `noxcat-photo.${extension}`);
+			formData.append('theme', themeId);
+			formData.append('themeTitle', result.title);
+			formData.append('themePrompt', result.prompt);
+			formData.append('quizAnswers', JSON.stringify(answers));
+
+			const response = await fetch(generateEndpoint, { method: 'POST', body: formData });
+			if (!response.ok) {
+				const error = new Error(`照片生成失敗 (${response.status})。`);
+				error.retryable = response.status === 429 || response.status >= 500;
+				throw error;
+			}
+
+			const generatedImage = await response.blob();
+			if (!generatedImage.type.startsWith('image/')) {
+				const error = new Error('伺服器未回傳圖片。');
+				error.retryable = true;
+				throw error;
+			}
+			return generatedImage;
+		} catch (error) {
+			const canRetry = error.retryable !== false && attempt < maxGenerationAttempts;
+			if (!canRetry) {
+				throw error;
+			}
+			console.warn(`Image generation failed; retrying (${attempt + 1}/${maxGenerationAttempts}).`, error);
+			if (!gameStage.hidden) {
+				gameMessage.textContent = `生成連線重試中 ${attempt + 1}/${maxGenerationAttempts}`;
+			}
+		}
+	}
+}
+
 async function generateFinalPhoto() {
 	const themeId = answers.memory.theme;
 	const result = themes[themeId];
 
 	app.classList.remove('quiz-mode');
 	app.classList.add('waiting-mode');
-	showStage(waitingStage);
+	let generationFinished = false;
+	const generation = requestGeneratedPhoto(themeId, result)
+		.then((generatedImage) => ({ generatedImage }))
+		.catch((error) => ({ error }))
+		.finally(() => {
+			generationFinished = true;
+		});
+	const game = playCatchGame();
 
 	try {
-        console.log('Generating final photo...');
-		const photo = await canvasToUploadBlob();
-		const formData = new FormData();
-		const extension = photo.type === 'image/webp' ? 'webp' : 'jpg';
-		formData.append('image', photo, `noxcat-photo.${extension}`);
-		formData.append('theme', themeId);
-		formData.append('themeTitle', result.title);
-		formData.append('themePrompt', result.prompt);
-		formData.append('quizAnswers', JSON.stringify(answers));
-
-		const response = await fetch(generateEndpoint, {
-			method: 'POST',
-			body: formData
-		});
-
-		if (!response.ok) {
-			throw new Error('照片生成失敗。');
+		console.log('Generating final photo...');
+		await game;
+		if (!generationFinished) {
+			showStage(waitingStage);
 		}
-
-		const generatedImage = await response.blob();
-		if (!generatedImage.type.startsWith('image/')) {
-			throw new Error('伺服器未回傳圖片。');
+		const { generatedImage, error } = await generation;
+		if (error) {
+			throw error;
 		}
 
 		if (finalImageUrl) {

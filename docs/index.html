@@ -106,6 +106,25 @@
 				</div>
 			</div>
 
+			<div class="stage stage-game" id="gameStage" hidden>
+				<div class="game-header">
+					<div>
+						<p class="step-label">生成進行中</p>
+						<h2>捕捉 NOXCAT</h2>
+					</div>
+					<div class="game-stats" aria-live="polite">
+						<span id="gameTimer">30</span>
+						<span>分數 <strong id="gameScore">0</strong></span>
+					</div>
+				</div>
+				<div class="game-arena">
+					<video id="gamePreview" autoplay playsinline muted></video>
+					<canvas id="gameCanvas"></canvas>
+					<img id="gameTarget" src="logo.png" alt="NOXCAT 目標">
+					<p class="game-message" id="gameMessage">用手掌碰觸 NOXCAT</p>
+				</div>
+			</div>
+
 			<div class="stage stage-result" id="resultStage" hidden>
 			<div class="panel final-result" id="finalResult">
 				<div class="section-heading">
@@ -126,6 +145,8 @@
 		</aside>
 	</main>
 
+	<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+	<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
 	<script src="noxcat.js"></script>
 </body>
 </html>
